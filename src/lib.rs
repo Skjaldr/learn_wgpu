@@ -1,6 +1,10 @@
 use std::{io::Cursor, default};
 
-use wgpu::{RenderPipelineDescriptor, SurfaceConfiguration};
+use wgpu::{
+    RenderPipelineDescriptor,
+    SurfaceConfiguration,
+    util::{DeviceExt}
+};
 use winit:: {
     event::{*, self},
     event_loop::{ControlFlow, EventLoop},
@@ -20,8 +24,23 @@ struct State {
     // it gets dropped after it as the surface contains
     // unsafe references to the window's resources.
     render_pipeline: wgpu::RenderPipeline,
+    vertex_buffer: wgpu::Buffer,
     window: Window,
 }
+
+// my vertices will have a position and color
+#[repr(C)]
+#[derive(Copy, Clone, Debug)]  // Need the vertex to be a copy so a buffer can be created with it
+struct Vertex {
+    position: [f32; 3], // represented as x, y, and z.
+    color: [f32; 3], // RBG values
+}
+
+const VERTICES: &[Vertex] = &[
+    Vertex { position: [0.0, 0.5, 0.0], color: [1.0, 0.0, 0.0] },
+    Vertex { position: [-0.5, -0.5, 0.0], color: [0.0, 1.0, 0.0] },
+    Vertex { position: [0.5, -0.5, 0.0], color: [0.0, 0.0, 1.0] },
+];
 
 impl State {
     async fn new(window: Window) -> Self {
@@ -143,6 +162,14 @@ impl State {
             multiview: None,
         });
 
+        let vertex_buffer = device.create_buffer_init(
+            &wgpu::util::BufferInitDescriptor {
+                label: Some("Vertex Buffer"),
+                contents: bytemuck::cast_slice(VERTICES),
+                usage: wgpu::BufferUsages::VERTEX,
+            }
+        );
+
         surface.configure(&device, &config);
         let color = wgpu::Color::BLACK;
 
@@ -201,23 +228,30 @@ impl State {
         });
 
         {
-            let _render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Render Pass"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &view,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 0.1,
-                            g: 0.2,
-                            b: 0.3,
-                            a: 0.4,
-                        }),
-                        store: true,
-                    },
-                })],
+                color_attachments: &[
+                    Some(wgpu::RenderPassColorAttachment {
+                        view: &view,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(
+                                wgpu::Color {
+                                    r: 0.1,
+                                    g: 0.2,
+                                    b: 0.3,
+                                    a: 1.0,
+                                }
+                            ),
+                            store: true,
+                        }
+                    })
+                ],
                 depth_stencil_attachment: None,
             });
+
+            render_pass.set_pipeline(&self.render_pipeline);
+            render_pass.draw(0..3, 0..1);
         }
 
 
