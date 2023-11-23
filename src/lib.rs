@@ -1,5 +1,4 @@
 use std::{io::Cursor, default};
-
 use wgpu::{
     RenderPipelineDescriptor,
     SurfaceConfiguration,
@@ -11,6 +10,9 @@ use winit:: {
     window::WindowBuilder,
     window::{Window, CursorIcon}, dpi::PhysicalPosition,
 };
+
+// LEFT OFF ON THE INDEX BUFFER
+
 
 struct State {
     surface: wgpu::Surface,
@@ -24,23 +26,37 @@ struct State {
     // it gets dropped after it as the surface contains
     // unsafe references to the window's resources.
     render_pipeline: wgpu::RenderPipeline,
+    num_vertices: u32,
     vertex_buffer: wgpu::Buffer,
     window: Window,
 }
 
+// Vertex data was previously stored in the vertex shader, but will work
+// better if stored in a a data type that allows easier access for creating
+// more complex objects
 // my vertices will have a position and color
+// Vertex needs to be a copy so it can be used to create a buffer
 #[repr(C)]
-#[derive(Copy, Clone, Debug)]  // Need the vertex to be a copy so a buffer can be created with it
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct Vertex {
-    position: [f32; 3], // represented as x, y, and z.
-    color: [f32; 3], // RBG values
+    // position represents the x, y, and z values
+    position: [f32; 3],
+
+    // color represents the rbg values
+    color: [f32; 3],
 }
 
+// the triangle is created in a counter-clockwise direction.
+//  this is apparently partially due to tradition, but mostly beacause of how the primitive of
+// the render_pipeline, it's desired that front_face of the triangle to be wgpu::FrontFace::Ccw
+// so that the back face is culled.  Sotrh states that "this means that any triangle that should
+// be facing us shouldl have its vertices in a counter-clockwise order".
 const VERTICES: &[Vertex] = &[
     Vertex { position: [0.0, 0.5, 0.0], color: [1.0, 0.0, 0.0] },
     Vertex { position: [-0.5, -0.5, 0.0], color: [0.0, 1.0, 0.0] },
     Vertex { position: [0.5, -0.5, 0.0], color: [0.0, 0.0, 1.0] },
 ];
+
 
 impl State {
     async fn new(window: Window) -> Self {
@@ -130,7 +146,9 @@ impl State {
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: "vs_main",
-                buffers: &[],
+                buffers: &[
+                    Vertex::desc(),
+                ],
             },
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
@@ -162,6 +180,7 @@ impl State {
             multiview: None,
         });
 
+        // creating a vertex buffer in the new() function of the state impl
         let vertex_buffer = device.create_buffer_init(
             &wgpu::util::BufferInitDescriptor {
                 label: Some("Vertex Buffer"),
@@ -172,6 +191,7 @@ impl State {
 
         surface.configure(&device, &config);
         let color = wgpu::Color::BLACK;
+        let num_vertices = VERTICES.len() as u32;
 
         Self {
             window,
@@ -182,6 +202,8 @@ impl State {
             size,
             color,
             render_pipeline,
+            vertex_buffer,
+            num_vertices,
         }
     }
 
@@ -199,18 +221,6 @@ impl State {
     }
 
     fn input(&mut self, event: &WindowEvent) -> bool {
-        // match event {
-        //     WindowEvent::CursorMoved { position, .. } =>  {
-        //         self.color = wgpu::Color {
-        //             r: position.x as f64 / self.size.width as f64,
-        //             g: position.y as f64 / self.size.height as f64,
-        //             b: 1.0,
-        //             a: 0.5,
-        //         };
-        //         true
-        //     }
-        //     _ => false,
-        // }
         false
     }
 
@@ -251,7 +261,9 @@ impl State {
             });
 
             render_pass.set_pipeline(&self.render_pipeline);
-            render_pass.draw(0..3, 0..1);
+
+            render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+            render_pass.draw(0..self.num_vertices, 0..1);
         }
 
 
@@ -260,6 +272,28 @@ impl State {
             Ok(())
     }
 
+}
+
+impl Vertex {
+    fn desc() -> wgpu::VertexBufferLayout<'static> {
+        wgpu::VertexBufferLayout {
+            array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: &[
+                wgpu::VertexAttribute {
+                    offset: 0,
+                    shader_location: 0,
+                    format: wgpu::VertexFormat::Float32x3,
+                },
+                wgpu::VertexAttribute {
+                    offset: std::mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
+                    shader_location: 1,
+                    format: wgpu::VertexFormat::Float32x3,
+
+                }
+            ]
+        }
+    }
 }
 
 #[cfg(target_arch = "wasm32")]
