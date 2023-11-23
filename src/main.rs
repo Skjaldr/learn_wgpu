@@ -1,13 +1,7 @@
-mod game;
-use crate::game::Game;
-// use winit::{event::*, event_loop::{ControlFlow, EventLoop}, window::WindowBuilder};
 
+use learn_wgpu::run;
 
 fn main() {
 
-    let game: Game = Game{};
-    game.initialize();
-    //game.run();
-    //game.destroy();
-
+    pollster::block_on(run());
 }
