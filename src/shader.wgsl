@@ -1,18 +1,5 @@
-<<<<<<< Updated upstream
-// Vertex shader!
-// createing a new vertex input struct to get data from the buffer
-struct VertexInput {
-    @location(0) position: vec3<f32>,
-    @location(1) color: vec3<f32>,
-};
-
-// struct to store the output of the vertex shaderd
-// @builtin(position) tells WGPU that this is the value we use as the vertex's clip
-// coordinates.  Similar to GLSL's gl_position.
-=======
 // Vertex Shader
 
->>>>>>> Stashed changes
 struct VertexOutput {
 	@builtin(position) clip_position: vec4<f32>,
 };

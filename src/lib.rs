@@ -3,17 +3,6 @@ use winit::{
 	event_loop::{ControlFlow, EventLoop},
 	window::{Window, WindowBuilder},
 };
-<<<<<<< Updated upstream
-use winit:: {
-    event::{*, self},
-    event_loop::{ControlFlow, EventLoop},
-    window::WindowBuilder,
-    window::{Window, CursorIcon}, dpi::PhysicalPosition,
-};
-
-// LEFT OFF ON THE INDEX BUFFER
-=======
->>>>>>> Stashed changes
 
 struct State {
 	surface: wgpu::Surface,
@@ -33,7 +22,7 @@ impl State {
 
 		// define instance
 		let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-			backends: wgpu::Backends::DX12,
+			backends: wgpu::Backends::all(),
 			..Default::default()
 		});
 		// define surface
@@ -79,6 +68,7 @@ impl State {
 			alpha_mode: surface_caps.alpha_modes[0],
 			view_formats: vec![],
 		};
+
 		// define shader, pipeline_layout and render_pipeline
 		let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
 			label: Some("Shader"),
@@ -185,10 +175,12 @@ impl State {
 							b: 0.3,
 							a: 1.0,
 						}),
-						store: true,
+						store: wgpu::StoreOp::Store,
 					},
 				})],
 				depth_stencil_attachment: None,
+				occlusion_query_set: None,
+				timestamp_writes: None,
 			});
 
 			render_pass.set_pipeline(&self.render_pipeline);
