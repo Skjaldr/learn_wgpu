@@ -1,8 +1,68 @@
+use wgpu::util::{DeviceExt};
 use winit::{
 	event::*,
 	event_loop::{ControlFlow, EventLoop},
 	window::{Window, WindowBuilder},
 };
+
+// const VERTICES: &[Vertex] = &[
+// 	Vertex { position: [-0.0868, 0.4924, 0.0], color: [0.5, 0.0, 0.5] },
+// 	Vertex { position: [-0.4951, 0.0695, 0.0], color: [0.5, 0.0, 0.5] },
+// 	Vertex { position: [-0.2192, -0.4494, 0.0], color: [0.5, 0.0, 0.5] },
+// 	Vertex { position: [0.3597, -0.3473, 0.0], color: [0.5, 0.0, 0.5] },
+// 	Vertex { position: [0.4415, 0.2347, 0.0], color: [0.5, 0.0, 0.5] },
+// ];
+// const INDICES: &[u16] = &[
+// 	0, 1, 4,
+// 	1, 2, 4,
+// 	2, 3, 4,
+// ];
+
+const VERTICES: &[Vertex] = &[
+	Vertex { position: [-0.4, 0.25, 0.0], color: [0.0, 0.0, 0.0] }, //0
+	Vertex { position: [0.0, -0.125, 0.0], color: [0.0, 0.0, 0.0] }, //1
+	Vertex { position: [0.4, 0.25, 0.0], color: [0.0, 0.0, 0.0] }, //2
+	Vertex { position: [0.25, -0.375, 0.0], color: [0.0, 0.0, 0.0] }, //3
+	Vertex { position: [0.15, 0.25, 0.0], color: [0.0, 0.0, 0.0] }, //4
+	Vertex { position: [-0.15, 0.25, 0.0], color: [0.5, 0.0, 0.5] }, //5
+	Vertex { position: [-0.25, -0.375, 0.0], color: [0.5, 0.0, 0.5] }, // 6
+];
+
+const INDICES: &[u16] = &[
+	0, 1, 2,
+	//0, 3, 4,
+	//2, 5, 6,
+];
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+struct Vertex {
+	position: [f32; 3],
+	color: [f32; 3],
+}
+
+// implementation for Vertex struct
+impl Vertex {
+
+	fn desc() -> wgpu::VertexBufferLayout<'static> {
+		wgpu::VertexBufferLayout {
+			array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
+			step_mode: wgpu::VertexStepMode::Vertex,
+			attributes: &[
+				wgpu::VertexAttribute {
+					offset: 0,
+					shader_location: 0,
+					format: wgpu::VertexFormat::Float32x3,
+				},
+				wgpu::VertexAttribute {
+					offset: std::mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
+					shader_location: 1,
+					format: wgpu::VertexFormat::Float32x3,
+				}
+			]
+		}
+	}
+}
 
 struct State {
 	surface: wgpu::Surface,
@@ -13,6 +73,11 @@ struct State {
 	window: Window,
 	render_pipeline_layout: wgpu::PipelineLayout,
 	render_pipeline: wgpu::RenderPipeline,
+	vertex_buffer: wgpu::Buffer,
+	index_buffer: wgpu::Buffer,
+	num_vertices: u32,
+	num_indices: u32,
+
 }
 
 impl State {
@@ -85,7 +150,7 @@ impl State {
 			vertex: wgpu::VertexState {
 				module: &shader,
 				entry_point: "vs_main",
-				buffers: &[],
+				buffers: &[Vertex::desc()],
 			},
 			fragment: Some(wgpu::FragmentState {
 				module: &shader,
@@ -114,7 +179,26 @@ impl State {
 			depth_stencil: None,
 		});
 
+		let vertex_buffer = device.create_buffer_init(
+			&wgpu::util::BufferInitDescriptor {
+				label: Some("Vertex Buffer"),
+				contents: bytemuck::cast_slice(VERTICES),
+				usage:  wgpu::BufferUsages::VERTEX,
+			}
+		);
 
+		let index_buffer = device.create_buffer_init(
+			&wgpu::util::BufferInitDescriptor {
+				label: Some("Index Buffer"),
+				contents: bytemuck::cast_slice(INDICES),
+				usage: wgpu::BufferUsages::INDEX,
+
+		}
+	);
+
+
+		let num_vertices = VERTICES.len() as u32;
+		let num_indices = INDICES.len() as u32;
 		// call surface.configure using &device and &config
 		surface.configure(&device, &config);
 
@@ -128,6 +212,10 @@ impl State {
 			size,
 			render_pipeline,
 			render_pipeline_layout,
+			vertex_buffer,
+			index_buffer,
+			num_indices,
+			num_vertices,
 		}
 	} // End of State::new() def
 
@@ -184,7 +272,9 @@ impl State {
 			});
 
 			render_pass.set_pipeline(&self.render_pipeline);
-			render_pass.draw(0..3, 0..1);
+			render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+			render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+			render_pass.draw_indexed(0..self.num_indices, 0, 0..1);
 		}
 
 		self.queue.submit(std::iter::once(encoder.finish()));
@@ -192,8 +282,21 @@ impl State {
 
 		Ok(())
 
-	} // End of State::render() def
+	} // End of State::render()
 }
+
+
+
+// Data to make the triangle - arranged in a CCW orientation. Top, Bottom left, bottom right.
+// for tradition and because the the primitive of the render_pipeline for the front_face
+// was set to Ccw (wgpu::FrontFace::Ccw)
+// const VERTICES: &[Vertex] = &[
+// 	Vertex { position: [0.0, 0.5, 0.0], color: [1.0, 0.0, 0.0] },
+// 	Vertex { position: [-0.5, -0.5, 0.0], color: [0.0, 1.0, 0.0] },
+// 	Vertex { position: [0.5, -0.5, 0.0], color: [0.0, 0.0, 1.0] },
+// ];
+
+
 
 pub async fn run() {
 
@@ -247,7 +350,6 @@ pub async fn run() {
 				}
 			}
 			_ => {}
-
 		}
 	});
 }
