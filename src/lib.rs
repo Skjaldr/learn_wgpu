@@ -19,19 +19,24 @@ use winit::{
 // ];
 
 const VERTICES: &[Vertex] = &[
-	Vertex { position: [-0.4, 0.25, 0.0], color: [0.0, 0.0, 0.0] }, //0
-	Vertex { position: [0.0, -0.125, 0.0], color: [0.0, 0.0, 0.0] }, //1
-	Vertex { position: [0.4, 0.25, 0.0], color: [0.0, 0.0, 0.0] }, //2
-	Vertex { position: [0.25, -0.375, 0.0], color: [0.0, 0.0, 0.0] }, //3
-	Vertex { position: [0.15, 0.25, 0.0], color: [0.0, 0.0, 0.0] }, //4
-	Vertex { position: [-0.15, 0.25, 0.0], color: [0.5, 0.0, 0.5] }, //5
-	Vertex { position: [-0.25, -0.375, 0.0], color: [0.5, 0.0, 0.5] }, // 6
+	Vertex { position: [-0.4, 0.25, 0.0], color: [0.5, 0.0, 0.5] }, //0
+	Vertex { position: [0.0, -0.25, 0.0], color: [0.5, 0.0, 0.5] }, //1
+	Vertex { position: [0.4, 0.25, 0.0], color: [0.5, 0.0, 0.5] }, //2
+
+	Vertex { position: [0.2667, -0.5833, 0.0], color: [0.5, 0.0, 0.5] }, //3
+	Vertex { position: [0.08933, 0.25, 0.0], color: [0.5, 0.0, 0.5] }, //4
+	Vertex { position: [-0.09, 0.25, 0.0], color: [0.5, 0.0, 0.5] }, //5
+
+	Vertex { position: [-0.2667, -0.5833, 0.0], color: [0.5, 0.0, 0.5] }, // 6
+	Vertex { position: [0.0, 0.66667, 0.0], color: [0.5, 0.0, 0.5] }, // 7
+	Vertex { position: [-0.1550, -0.05833, 0.0], color: [0.5, 0.0, 0.5]}, // 8
 ];
 
 const INDICES: &[u16] = &[
 	0, 1, 2,
-	//0, 3, 4,
-	//2, 5, 6,
+	0, 3, 4,
+	2, 5, 6,
+	7, 8, 3,
 ];
 
 #[repr(C)]
@@ -87,7 +92,7 @@ impl State {
 
 		// define instance
 		let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-			backends: wgpu::Backends::all(),
+			backends: wgpu::Backends::DX12,
 			..Default::default()
 		});
 		// define surface
